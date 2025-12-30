@@ -45,11 +45,9 @@ sudo systemctl enable --now docker
 
 2.2. ติดตั้ง cri-dockerd (เนื่องจาก K8s v1.24+ ไม่รองรับ Docker โดยตรง): สำหรับ RHEL 9 ให้ใช้แพ็กเกจของ el9
 ```bash
-VER=$(curl -s https://api.github.com/repos/Mirantis/cri-dockerd/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
-wget https://github.com/Mirantis/cri-dockerd/releases/download/v${VER}/cri-dockerd-${VER}.el9.x86_64.rpm
-
-sudo rpm -ivh cri-dockerd-${VER}.el9.x86_64.rpm
-sudo systemctl enable --now cri-docker.socket
+wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd-0.3.16.amd64.tgz
+tar -xvf cri-dockerd-0.3.16.amd64.tgz
+sudo mv cri-dockerd/cri-dockerd /usr/local/bin/
 ```
 
 3. ติดตั้ง Kubernetes Tools (ทุก Node)
