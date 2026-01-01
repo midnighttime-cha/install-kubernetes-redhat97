@@ -45,9 +45,50 @@ sudo systemctl enable --now docker
 
 2.2. ติดตั้ง cri-dockerd (เนื่องจาก K8s v1.24+ ไม่รองรับ Docker โดยตรง): สำหรับ RHEL 9 ให้ใช้แพ็กเกจของ el9
 ```bash
-wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd-0.3.16.amd64.tgz
-tar -xvf cri-dockerd-0.3.16.amd64.tgz
+# ดึงเวอร์ชันล่าสุด
+VER=$(curl -s https://api.github.com/repos/Mirantis/cri-dockerd/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//g')
+wget https://github.com/Mirantis/cri-dockerd/releases/download/v${VER}/cri-dockerd-${VER}.amd64.tgz
+
+# แตกไฟล์และย้ายไปที่ตำแหน่งระบบ
+tar xzwf cri-dockerd-${VER}.amd64.tgz
 sudo mv cri-dockerd/cri-dockerd /usr/local/bin/
+sudo chmod +x /usr/local/bin/cri-dockerd
+```
+
+2.3. สร้าง Systemd Unit Files (Socket และ Service)
+```bash
+cat <<EOF | sudo tee /etc/systemd/system/cri-docker.socket
+[Unit]
+Description=cri-docker: Docker Application Container Engine API [Socket]
+
+[Socket]
+ListenStream=/var/run/cri-dockerd.sock
+
+[Install]
+WantedBy=sockets.target
+EOF
+```
+2.4. สร้างไฟล์ Service:
+```bash
+cat <<EOF | sudo tee /etc/systemd/system/cri-docker.service
+[Unit]
+Description=cri-docker: Docker Application Container Engine API
+Documentation=https://docs.mirantis.com
+After=network-online.target firewalld.service docker.service
+Wants=network-online.target
+Requires=cri-docker.socket
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/cri-dockerd --container-runtime-endpoint fd://
+ExecReload=/bin/kill -s HUP \$MAINPID
+TimeoutSec=0
+RestartSec=2
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
 ```
 
 3. ติดตั้ง Kubernetes Tools (ทุก Node)
